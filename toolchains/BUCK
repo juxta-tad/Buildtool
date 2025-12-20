@@ -1,3 +1,23 @@
-load("@prelude//toolchains:demo.bzl", "system_demo_toolchains")
+load("@prelude//toolchains:cxx.bzl", "system_cxx_toolchain")
+load("@prelude//toolchains:genrule.bzl", "system_genrule_toolchain")
+load("@prelude//toolchains:python.bzl", "system_python_bootstrap_toolchain")
 
-system_demo_toolchains()
+# Python bootstrap (required by cxx internal tools)
+system_python_bootstrap_toolchain(
+    name = "python_bootstrap",
+    visibility = ["PUBLIC"],
+)
+
+# System C++ toolchain with ThinLTO
+system_cxx_toolchain(
+    name = "cxx",
+    cxx_flags = ["-flto=thin"],
+    c_flags = ["-flto=thin"],
+    link_flags = ["-flto=thin"],
+    visibility = ["PUBLIC"],
+)
+
+system_genrule_toolchain(
+    name = "genrule",
+    visibility = ["PUBLIC"],
+)
