@@ -14,9 +14,11 @@
           pkgs.pkg-config
         ];
 
-        # pkg-config finds raylib automatically via PKG_CONFIG_PATH (set by mkShell)
-        # clangd finds headers via CPLUS_INCLUDE_PATH
-        CPLUS_INCLUDE_PATH = "${pkgs.raylib}/include";
+        # clangd needs these for header resolution
+        CPLUS_INCLUDE_PATH = builtins.concatStringsSep ":" [
+          "${pkgs.libcxx.dev}/include/c++/v1"
+          "${pkgs.raylib}/include"
+        ];
       };
     };
 }

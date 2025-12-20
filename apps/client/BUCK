@@ -1,0 +1,38 @@
+cxx_binary(
+    name = "client",
+    srcs = ["main.cpp"],
+    deps = ["//:raylib"],
+    prefix_header = "pch.h",
+    visibility = ["PUBLIC"],
+)
+
+cxx_binary(
+    name = "client_asan",
+    srcs = ["main.cpp"],
+    deps = ["//:raylib"],
+    prefix_header = "pch.h",
+    compiler_flags = [
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-g",
+    ],
+    linker_flags = [
+        "-fsanitize=address,undefined",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cxx_binary(
+    name = "client_cov",
+    srcs = ["main.cpp"],
+    deps = ["//:raylib"],
+    prefix_header = "pch.h",
+    compiler_flags = [
+        "--coverage",
+        "-g",
+    ],
+    linker_flags = [
+        "--coverage",
+    ],
+    visibility = ["PUBLIC"],
+)

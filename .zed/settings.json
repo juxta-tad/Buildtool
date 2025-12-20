@@ -1,0 +1,17 @@
+{
+  "load_direnv": "direct",
+  "languages": {
+    "Starlark": {
+      "language_servers": ["buck2-lsp", "!starpls", "!tilt"],
+      "formatter": "language_server",
+    },
+  },
+  "hidden_files": [
+    "**/.*",
+    "**/*.{nix,bzl,lock,h}",
+    "**/BUCK",
+    "**/buck-out",
+    "**/toolchains",
+    "**/result",
+  ],
+}

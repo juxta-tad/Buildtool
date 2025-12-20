@@ -1,0 +1,6 @@
+cxx_library(
+    name = "core",
+    srcs = ["core.cpp"],
+    exported_headers = ["core.hpp"],
+    visibility = ["PUBLIC"],
+)

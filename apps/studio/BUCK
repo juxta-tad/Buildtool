@@ -1,0 +1,5 @@
+cxx_binary(
+    name = "studio",
+    srcs = ["main.cpp"],
+    visibility = ["PUBLIC"],
+)

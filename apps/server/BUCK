@@ -1,0 +1,5 @@
+cxx_binary(
+    name = "server",
+    srcs = ["main.cpp"],
+    visibility = ["PUBLIC"],
+)
