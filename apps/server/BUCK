@@ -1,5 +1,3 @@
-cxx_binary(
-    name = "server",
-    srcs = ["main.cpp"],
-    visibility = ["PUBLIC"],
-)
+load("//:defs.bzl", "app")
+
+app(deps = ["//:raylib"], default = "release")

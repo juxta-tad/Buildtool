@@ -1,5 +1,3 @@
-cxx_binary(
-    name = "studio",
-    srcs = ["main.cpp"],
-    visibility = ["PUBLIC"],
-)
+load("//:defs.bzl", "app")
+
+app(default = "release")

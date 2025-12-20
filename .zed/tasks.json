@@ -1,7 +1,14 @@
 [
   {
     "label": "Run",
-    "command": "buck2 run //:raylib_demo",
+    "command": "buck2 run //$(dirname $ZED_RELATIVE_FILE)",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always",
+  },
+  {
+    "label": "Build All",
+    "command": "buck2 build //apps/... //libs/...",
     "use_new_terminal": false,
     "allow_concurrent_runs": false,
     "reveal": "always",

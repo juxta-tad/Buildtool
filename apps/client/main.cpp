@@ -1,14 +1,15 @@
 #include "raylib.h"
+#include <cstdio>
 
 int main() {
-  InitWindow(800, 401, "Raylib + Buck2 + Nix");
-
+  InitWindow(800, 400, "Raylib + Bucks");
+  SetWindowFocused();
   Vector2 ballPosition = {400.0f, 300.0f};
   float ballRadius = 50.0f;
   Color ballColor = MAROON;
 
   SetTargetFPS(60);
-
+  std::printf("hi\n");
   while (!WindowShouldClose()) {
     if (IsKeyDown(KEY_RIGHT))
       ballPosition.x += 4.0f;

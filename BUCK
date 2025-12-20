@@ -1,6 +1,8 @@
-load("//:nix_deps.bzl", "external_pkgconfig_library")
+# Root BUCK file - re-exports dependencies from //nix
 
-# Third-party dependencies (provided by Nix via pkg-config)
-external_pkgconfig_library(
+# Raylib is now provided by //nix:raylib via flake.cxx_library
+alias(
     name = "raylib",
+    actual = "//nix:raylib",
+    visibility = ["PUBLIC"],
 )

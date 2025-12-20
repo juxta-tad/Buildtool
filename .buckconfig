@@ -1,3 +1,4 @@
+[buildfile]
 
 [cells]
   root = .
@@ -28,3 +29,10 @@
 
 [project]
   ignore = .git
+
+[buck2]
+  digest_algorithms = BLAKE3,SHA1
+  sqlite_materializer_state = true
+  defer_write_actions = true
+  restarter = true
+  file_watcher = watchman

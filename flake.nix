@@ -5,20 +5,17 @@
 
   outputs = { self, nixpkgs }:
     let
-      system = "aarch64-darwin";
-      pkgs = nixpkgs.legacyPackages.${system};
+      supportedSystems = [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ];
+      forAllSystems = fn: nixpkgs.lib.genAttrs supportedSystems (system: fn nixpkgs.legacyPackages.${system});
     in {
-      devShells.${system}.default = pkgs.mkShell {
-        buildInputs = [
-          pkgs.raylib
-          pkgs.pkg-config
-        ];
-
-        # clangd needs these for header resolution
-        CPLUS_INCLUDE_PATH = builtins.concatStringsSep ":" [
-          "${pkgs.libcxx.dev}/include/c++/v1"
-          "${pkgs.raylib}/include"
-        ];
-      };
+      devShells = forAllSystems (pkgs: {
+        default = pkgs.mkShellNoCC {
+          buildInputs = [
+            pkgs.llvmPackages_18.clang
+            pkgs.llvmPackages_18.bintools
+            pkgs.watchman
+          ];
+        };
+      });
     };
 }
