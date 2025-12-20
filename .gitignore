@@ -1,0 +1,6 @@
+buck-out/
+.buckconfig.local
+.direnv/
+.cache/
+result
+compile_commands.json
