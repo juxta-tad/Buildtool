@@ -1,6 +1,15 @@
+# Buck2 build outputs
 buck-out/
 .buckconfig.local
+
+# Nix
 .direnv/
-.cache/
 result
+
+# Build artifacts
+.cache/
 compile_commands.json
+
+# Precompiled headers (generated)
+*.pch
+*.gch
