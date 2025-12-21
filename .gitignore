@@ -13,3 +13,12 @@ compile_commands.json
 # Precompiled headers (generated)
 *.pch
 *.gch
+.zed/extensions/cpp-runnables/languages/cpp/textobjects.scm
+.zed/extensions/cpp-runnables/languages/cpp/overrides.scm
+.zed/extensions/cpp-runnables/languages/cpp/outline.scm
+.zed/extensions/cpp-runnables/languages/cpp/injections.scm
+.zed/extensions/cpp-runnables/languages/cpp/indents.scm
+.zed/extensions/cpp-runnables/languages/cpp/imports.scm
+.zed/extensions/cpp-runnables/languages/cpp/highlights.scm
+.zed/extensions/cpp-runnables/languages/cpp/embedding.scm
+.zed/extensions/cpp-runnables/languages/cpp/brackets.scm
