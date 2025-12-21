@@ -1,10 +1,19 @@
 [
   {
     "label": "Run",
-    "command": "buck2 run //$(dirname $ZED_RELATIVE_FILE)",
+    "command": "buck2 run //$ZED_RELATIVE_DIR",
     "use_new_terminal": false,
     "allow_concurrent_runs": false,
     "reveal": "always",
+    "tags": ["cpp-main"],
+  },
+  {
+    "label": "Test",
+    "command": "buck2 test //$ZED_RELATIVE_DIR:$ZED_STEM -- --env GTEST_FILTER='*.$ZED_SYMBOL'",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always",
+    "tags": ["cpp-gtest"],
   },
   {
     "label": "Build All",

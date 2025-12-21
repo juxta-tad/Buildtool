@@ -2,8 +2,6 @@
 #ifndef PCH_H
 #define PCH_H
 
-// Standard library headers
-#include <cstdint>
-#include <cstdlib>
+#include "raylib.h"
 
 #endif // PCH_H

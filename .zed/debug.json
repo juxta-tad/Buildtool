@@ -1,0 +1,13 @@
+[
+  {
+    "label": "Debug Current",
+    "adapter": "CodeLLDB",
+    "request": "launch",
+    "build": {
+      "command": "buck2 build //$ZED_RELATIVE_DIR:macos_asan",
+      "cwd": "$ZED_WORKTREE_ROOT",
+    },
+    "program": "$ZED_WORKTREE_ROOT/buck-out/v2/gen/root/$ZED_RELATIVE_DIR/macos_asan",
+    "cwd": "$ZED_WORKTREE_ROOT",
+  },
+]

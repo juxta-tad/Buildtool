@@ -1,32 +1,41 @@
+#include "core/core.hpp"
 #include "raylib.h"
 #include <cstdio>
 
 int main() {
-  InitWindow(800, 400, "Raylib + Bucks");
+  std::printf("Core version: %s\n", core::version());
+
+  InitWindow(800, 600, "Rotating Cube");
   SetWindowFocused();
-  Vector2 ballPosition = {400.0f, 300.0f};
-  float ballRadius = 50.0f;
-  Color ballColor = MAROON;
+
+  Camera3D camera = {};
+  camera.fovy = 45.0f;
+  camera.target = {0.0f, 0.0f, 0.0f};
+  camera.position = {5.0f, 5.0f, 5.0f};
+  camera.up = {0.0f, 1.0f, 0.0f};
+  camera.projection = CAMERA_PERSPECTIVE;
+
+  Model cube = LoadModelFromMesh(GenMeshCube(2.0f, 2.0f, 2.0f));
+  float rotation = 0.0f;
 
   SetTargetFPS(60);
-  std::printf("hi\n");
-  while (!WindowShouldClose()) {
-    if (IsKeyDown(KEY_RIGHT))
-      ballPosition.x += 4.0f;
-    if (IsKeyDown(KEY_LEFT))
-      ballPosition.x -= 4.0f;
-    if (IsKeyDown(KEY_DOWN))
-      ballPosition.y += 4.0f;
-    if (IsKeyDown(KEY_UP))
-      ballPosition.y -= 4.0f;
 
+  while (!WindowShouldClose()) {
+    rotation += 1.0f;
     BeginDrawing();
-    ClearBackground(RAYWHITE);
-    DrawCircleV(ballPosition, ballRadius, ballColor);
-    DrawText("Arrow keys to move", 10, 10, 20, DARKGRAY);
-    DrawFPS(10, 40);
+    ClearBackground(BLACK);
+    BeginMode3D(camera);
+
+    DrawModelEx(cube, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, rotation,
+                {1.0f, 1.0f, 1.0f}, MAROON);
+
+    EndMode3D();
+
+    DrawFPS(10, 10);
     EndDrawing();
   }
+
+  UnloadModel(cube);
   CloseWindow();
   return 0;
 }

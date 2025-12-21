@@ -1,9 +1,11 @@
 {
+  "max_tabs": 5,
   "load_direnv": "shell_hook",
   "file_types": {
-    
-  }
-  ,
+    "ini": [".buckconfig"],
+    "Starlark": ["BUCK"],
+    "Shell Script": [".envrc"],
+  },
   "languages": {
     "Starlark": {
       "language_servers": ["buck2-lsp", "!starpls", "!tilt"],
@@ -32,10 +34,7 @@
   },
   "hidden_files": [
     "**/.*",
-    "**/*.{nix,bzl,lock,h}",
-    "**/BUCK",
-    "**/buck-out",
-    "**/toolchains",
-    "**/result",
+    "**/*.{nix,bzl,lock,h,bxl}",
+    "**/{bxl,BUCK,buck-out,toolchains,result,nix}",
   ],
 }

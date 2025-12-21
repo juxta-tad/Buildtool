@@ -1,6 +1,16 @@
 cxx_library(
     name = "core",
     srcs = ["core.cpp"],
+    header_namespace = "core",
     exported_headers = ["core.hpp"],
     visibility = ["PUBLIC"],
+)
+
+cxx_test(
+    name = "core_test",
+    srcs = ["core_test.cpp"],
+    deps = [
+        ":core",
+        "//nix:gtest",
+    ],
 )

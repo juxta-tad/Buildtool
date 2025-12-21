@@ -1,6 +1,8 @@
 load("@prelude//toolchains:cxx.bzl", "system_cxx_toolchain")
 load("@prelude//toolchains:genrule.bzl", "system_genrule_toolchain")
 load("@prelude//toolchains:python.bzl", "system_python_bootstrap_toolchain")
+load("@prelude//tests:test_toolchain.bzl", "noop_test_toolchain")
+load("@prelude//toolchains:remote_test_execution.bzl", "remote_test_execution_toolchain")
 
 # Python bootstrap (required by cxx internal tools)
 system_python_bootstrap_toolchain(
@@ -19,5 +21,18 @@ system_cxx_toolchain(
 
 system_genrule_toolchain(
     name = "genrule",
+    visibility = ["PUBLIC"],
+)
+
+# Test toolchain for cxx_test and other test rules
+noop_test_toolchain(
+    name = "test",
+    visibility = ["PUBLIC"],
+)
+
+# Remote test execution (noop/local)
+remote_test_execution_toolchain(
+    name = "remote_test_execution",
+    profiles = {},
     visibility = ["PUBLIC"],
 )

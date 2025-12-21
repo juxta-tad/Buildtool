@@ -17,5 +17,10 @@
           ];
         };
       });
+
+      templates.default = {
+        path = ./.;
+        description = "Buck2 + Nix C++ project template";
+      };
     };
 }

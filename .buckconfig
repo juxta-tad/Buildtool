@@ -36,3 +36,4 @@
   defer_write_actions = true
   restarter = true
   file_watcher = watchman
+  create_unhashed_links = true

@@ -1,0 +1,6 @@
+id = "cpp-runnables"
+name = "C++ Runnables"
+version = "0.0.1"
+schema_version = 1
+authors = ["You"]
+description = "Adds run icons for C++ main functions and tests"
