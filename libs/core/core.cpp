@@ -1,7 +1,7 @@
-#include "core.hpp"
+#include "core/core.hpp"
 
 namespace core {
 
-const char *version() { return "0.0.1"; }
+const char *version() { return "1.0.0"; }
 
 } // namespace core

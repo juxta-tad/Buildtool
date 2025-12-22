@@ -1,10 +1,20 @@
 {
   "max_tabs": 5,
-  "load_direnv": "shell_hook",
+  "load_direnv": "direct",
   "file_types": {
     "ini": [".buckconfig"],
     "Starlark": ["BUCK"],
     "Shell Script": [".envrc"],
+  },
+  "lsp": {
+    "clangd": {
+      "binary": {
+        "arguments": [
+          "--compile-commands-dir=.cache/compdb",
+          "--query-driver=**",
+        ],
+      },
+    },
   },
   "languages": {
     "Starlark": {
@@ -14,12 +24,6 @@
     "C++": {
       "format_on_save": "on",
       "formatter": [
-        {
-          "external": {
-            "command": "clang-format",
-            "arguments": ["--assume-filename={buffer_path}"],
-          },
-        },
         {
           "external": {
             "command": "bash",

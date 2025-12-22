@@ -26,7 +26,4 @@ if [ $? -eq 0 ]; then
   afplay -v 0.3 /System/Library/Sounds/Tink.aiff
 else
   afplay -v 0.3 /System/Library/Sounds/Basso.aiff &
-  if [ "$double_tap" = "1" ]; then
-    zed "$errlog"
-  fi
 fi

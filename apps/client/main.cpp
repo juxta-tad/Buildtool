@@ -1,18 +1,21 @@
 #include "core/core.hpp"
-#include "raylib.h"
+
 #include <cstdio>
+#include <raylib.h>
 
 int main() {
+
   std::printf("Core version: %s\n", core::version());
 
   InitWindow(800, 600, "Rotating Cube");
   SetWindowFocused();
 
   Camera3D camera = {};
-  camera.fovy = 45.0f;
-  camera.target = {0.0f, 0.0f, 0.0f};
+
+  camera.fovy = 45.0F;
+  camera.target = {0.0f, 0.0F, 0.0f};
   camera.position = {5.0f, 5.0f, 5.0f};
-  camera.up = {0.0f, 1.0f, 0.0f};
+  camera.up = {0.0F, 1.0f, 0.0f};
   camera.projection = CAMERA_PERSPECTIVE;
 
   Model cube = LoadModelFromMesh(GenMeshCube(2.0f, 2.0f, 2.0f));

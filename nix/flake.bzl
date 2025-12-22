@@ -210,34 +210,20 @@ def _flake_package_impl(ctx: AnalysisContext) -> list[Provider]:
     if output != "out":
         attribute = "{}.{}".format(attribute, output)
 
-    # Declare a directory for the nix out-link, then reference the result symlink within it
-    nix_out_dir = ctx.actions.declare_output("nix_out", dir = True)
-    # Nix names the symlink "result" for default output, "result-{output}" for others
-    result_name = "result" if output == "out" else "result-{}".format(output)
+    # Build nix package and copy to buck-out (required for buck2 to track as artifact)
+    # We use cp -rL to dereference symlinks from the Nix store, and chmod to make writable
+    out_dir = ctx.actions.declare_output("out", dir = True)
+    flake_ref = cmd_args(flake_path, attribute, delimiter = "#") if flake_path else attribute
     nix_build = cmd_args([
-        "env", "--",
-        "nix", "--extra-experimental-features", "nix-command flakes",
-        "build",
-        "--out-link", cmd_args(nix_out_dir.as_output(), "result", delimiter = "/"),
-        cmd_args(flake_path, attribute, delimiter = "#") if flake_path else attribute,
+        "sh", "-c",
+        # Build with --no-link (no symlink), get path via --print-out-paths, copy, and fix permissions
+        "set -e; store_path=$(nix --extra-experimental-features 'nix-command flakes' build --no-link --print-out-paths \"$1\"); cp -rL \"$store_path\" \"$2\"; chmod -R u+w \"$2\"",
+        "--",
+        flake_ref,
+        out_dir.as_output(),
     ])
     ctx.actions.run(nix_build, category = "nix_build", identifier = attribute, local_only = ctx.attrs.local_only)
-
-    # The result symlink is at nix_out_dir/result (or result-{output} for non-default outputs)
-    nix_result = nix_out_dir.project(result_name)
-
-    if ctx.attrs.materialize:
-        # Copy to materialize (dereference symlinks)
-        out_dir = ctx.actions.declare_output("out", dir = True)
-        ctx.actions.run(
-            cmd_args(["cp", "-rL", nix_result, out_dir.as_output()]),
-            category = "nix_materialize",
-            identifier = package,
-            local_only = ctx.attrs.local_only,
-        )
-        out = out_dir
-    else:
-        out = nix_result
+    out = out_dir
 
     run_info = []
     if ctx.attrs.binary:
@@ -267,7 +253,6 @@ _flake_package = rule(
         "binary": attrs.option(attrs.string(), default = None),
         "binaries": attrs.list(attrs.string(), default = []),
         "local_only": attrs.bool(default = True),
-        "materialize": attrs.bool(default = False),
     },
 )
 
@@ -282,28 +267,12 @@ def _flake_cxx_library_impl(ctx: AnalysisContext) -> list[Provider]:
     os_lookup = ctx.attrs._target_os_type[OsLookup]
     is_macos = os_lookup.os == Os("macos")
 
-    # Copy the include tree once, then map subdirs via -isystem flags
+    # Reference include and lib directories directly from copied Nix package
     include_dirs_attr = ctx.attrs.include_dirs if ctx.attrs.include_dirs else ["include"]
     lib_path = ctx.attrs.lib_dir if ctx.attrs.lib_dir else "lib"
 
-    # Determine the root include dir to copy (first component of first include_dirs entry)
-    include_root_src = include_dirs_attr[0].split("/")[0] if include_dirs_attr else "include"
-
-    # Copy the entire include tree once (from dev package if available)
-    include_dir = ctx.actions.declare_output("include", dir = True)
-    ctx.actions.run(
-        cmd_args(["cp", "-rL", cmd_args(nix_dev_pkg, include_root_src, delimiter = "/"), include_dir.as_output()]),
-        category = "nix_copy_include",
-        identifier = ctx.label.name,
-    )
-
-    # Copy lib directory (from main package)
-    lib_dir = ctx.actions.declare_output("lib", dir = True)
-    ctx.actions.run(
-        cmd_args(["cp", "-rL", cmd_args(nix_pkg, lib_path, delimiter = "/"), lib_dir.as_output()]),
-        category = "nix_copy_lib",
-        identifier = ctx.label.name,
-    )
+    # Reference lib directory from copied package
+    lib_dir = nix_pkg.project(lib_path)
 
     # Parse pkg-config .pc files using dynamic_output (pure Starlark parsing)
     pkg_config_cflags_file = None
@@ -315,40 +284,27 @@ def _flake_cxx_library_impl(ctx: AnalysisContext) -> list[Provider]:
         pc_names = ctx.attrs.pkg_config
         pc_dir = ctx.attrs.pkg_config_dir if ctx.attrs.pkg_config_dir else "lib/pkgconfig"
 
-        # Copy .pc files from dev package (or main package if no dev)
-        pc_copied = []
+        # Reference .pc files from copied dev package
+        pc_files = []
         for pc_name in pc_names:
-            pc_out = ctx.actions.declare_output("pkgconfig/{}.pc".format(pc_name))
-            ctx.actions.run(
-                cmd_args([
-                    "cp",
-                    cmd_args(nix_dev_pkg, pc_dir, "{}.pc".format(pc_name), delimiter = "/"),
-                    pc_out.as_output(),
-                ]),
-                category = "pkg_config_copy",
-                identifier = "{}_{}".format(ctx.label.name, pc_name),
-            )
-            pc_copied.append(pc_out)
+            pc_files.append(nix_dev_pkg.project("{}/{}.pc".format(pc_dir, pc_name)))
 
         # Use dynamic_output to read and parse .pc files
-        def _make_pkg_config_generator(pc_files, pc_names_list, cflags_out, ldflags_out, pkgconfig_dir_artifact):
+        def _make_pkg_config_generator(pc_files_list, pc_names_list, cflags_out, ldflags_out):
             def _generate_pkg_config_flags(ctx, artifacts, outputs):
                 all_cflags = []
                 all_libs = []
 
                 # Build a map of package name -> content for the packages we have
                 pc_contents = {}
-                for i, pc_file in enumerate(pc_files):
+                for i, pc_file in enumerate(pc_files_list):
                     content = artifacts[pc_file].read_string()
                     pc_contents[pc_names_list[i]] = content
 
                 # Create a loader function for transitive deps
-                # Note: This only works for deps within the same pkgconfig dir
                 def _load_required_pc(pkg_name):
                     if pkg_name in pc_contents:
                         return pc_contents[pkg_name]
-                    # Try to load from the pkgconfig directory
-                    # This is a best-effort for transitive deps in the same package
                     return None
 
                 for pc_name in pc_names_list:
@@ -370,10 +326,10 @@ def _flake_cxx_library_impl(ctx: AnalysisContext) -> list[Provider]:
             return _generate_pkg_config_flags
 
         ctx.actions.dynamic_output(
-            dynamic = pc_copied,
+            dynamic = pc_files,
             inputs = [],
             outputs = [pkg_config_cflags_file.as_output(), pkg_config_ldflags_file.as_output()],
-            f = _make_pkg_config_generator(pc_copied, pc_names, pkg_config_cflags_file, pkg_config_ldflags_file, nix_pkg),
+            f = _make_pkg_config_generator(pc_files, pc_names, pkg_config_cflags_file, pkg_config_ldflags_file),
         )
 
     providers = []
@@ -395,22 +351,18 @@ def _flake_cxx_library_impl(ctx: AnalysisContext) -> list[Provider]:
             dep_linkable_graphs.append(dep[LinkableGraph])
 
     # Preprocessor info with include directories
-    # Map each include_dirs entry to the appropriate subdir of our copied include tree
+    # Reference paths directly from Nix dev package
     pre_args = []
     for inc_path in include_dirs_attr:
-        # Strip the root component we copied (e.g., "include/foo" -> "foo")
-        if "/" in inc_path:
-            subdir = "/".join(inc_path.split("/")[1:])
-            pre_args.append(cmd_args("-isystem", cmd_args(include_dir, subdir, delimiter = "/"), delimiter = ""))
-        else:
-            pre_args.append(cmd_args("-isystem", include_dir, delimiter = ""))
+        inc_dir = nix_dev_pkg.project(inc_path)
+        pre_args.append(cmd_args("-isystem", inc_dir, delimiter = ""))
     if pkg_config_cflags_file:
         pre_args.append(cmd_args("@", pkg_config_cflags_file, delimiter = ""))
 
     pre = CPreprocessor(
         args = CPreprocessorArgs(args = pre_args),
     )
-    providers.append(cxx_merge_cpreprocessors(ctx.actions, [pre], dep_preprocessors))
+    providers.append(cxx_merge_cpreprocessors(ctx, [pre], dep_preprocessors))
 
     # Linker flags
     link_flags = [cmd_args("-L", lib_dir, delimiter = "")]

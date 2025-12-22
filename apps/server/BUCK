@@ -1,6 +1,6 @@
 load("//:defs.bzl", "app")
 
-app(deps = ["//:raylib","//libs/core:core"])
+app(deps = ["//libs/core:core"])
 
 cxx_test(
     name = "server_test",
