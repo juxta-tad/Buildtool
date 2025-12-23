@@ -13,7 +13,7 @@ int main() {
   Camera3D camera = {};
 
   camera.fovy = 45.0F;
-  camera.target = {0.0f, 0.0F, 0.0f};
+  camera.targets = {0.0f, 0.0F, 0.0f};
   camera.position = {5.0f, 5.0f, 5.0f};
   camera.up = {0.0F, 1.0f, 0.0f};
   camera.projection = CAMERA_PERSPECTIVE;
