@@ -117,7 +117,8 @@ buck2 query "deps(//apps/client)" # Inspect deps
 ## Forking
 
 ```bash
-git clone <url> new-proj && cd new-proj
-rm -rf .git && git init
-gh repo create new-proj --source=. --push
+  git clone https://github.com/juxta-tad/Buildtool Mosxil-play && cd Mosxil-play && \
+  rm -rf .git && git init && \
+  git add . && git commit -m "Initial commit" && \
+  gh repo create Mosxil-play --source=. --push --priva
 ```
