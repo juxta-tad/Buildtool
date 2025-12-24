@@ -63,6 +63,8 @@
 
             if [ "$(uname -s)" = "Darwin" ]; then
               export LD=ld64.lld
+              # Use Xcode's debugserver for lldb (Nix lldb lacks signed debugserver)
+              export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
             else
               export LD=ld.lld
             fi

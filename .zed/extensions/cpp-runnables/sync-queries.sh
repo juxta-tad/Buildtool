@@ -4,19 +4,27 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LANG_DIR="$SCRIPT_DIR/languages/cpp"
-ZED_REPO="https://raw.githubusercontent.com/zed-industries/zed/main/crates/languages/src/cpp"
+ZED_RAW="https://raw.githubusercontent.com/zed-industries/zed/main/crates/languages/src/cpp"
+
+mkdir -p "$LANG_DIR"
 
 # Backup local runnables.scm
-cp "$LANG_DIR/runnables.scm" /tmp/runnables.scm.bak 2>/dev/null || true
+[[ -f "$LANG_DIR/runnables.scm" ]] && cp "$LANG_DIR/runnables.scm" /tmp/runnables.scm.bak
 
-# Download all queries from Zed
-for file in config.toml highlights.scm brackets.scm indents.scm outline.scm \
-            injections.scm overrides.scm embedding.scm textobjects.scm imports.scm; do
-    echo "Downloading $file..."
-    curl -sL "$ZED_REPO/$file" -o "$LANG_DIR/$file"
-done
+# Clone sparse checkout of just the cpp directory
+tmp=$(mktemp -d)
+trap "rm -rf $tmp" EXIT
+
+git clone --depth 1 --filter=blob:none --sparse \
+    https://github.com/zed-industries/zed.git "$tmp/zed" 2>/dev/null
+
+cd "$tmp/zed"
+git sparse-checkout set crates/languages/src/cpp 2>/dev/null
+
+# Copy all files except runnables.scm
+find crates/languages/src/cpp -type f ! -name "runnables.scm" -exec cp {} "$LANG_DIR/" \;
 
 # Restore local runnables.scm
-cp /tmp/runnables.scm.bak "$LANG_DIR/runnables.scm" 2>/dev/null || true
+[[ -f /tmp/runnables.scm.bak ]] && cp /tmp/runnables.scm.bak "$LANG_DIR/runnables.scm"
 
 echo "Done. Reinstall the dev extension to apply changes."
