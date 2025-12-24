@@ -2,35 +2,47 @@ load("@prelude//cxx:comp_db.bzl", "CxxCompilationDbInfo")
 load("@prelude//cxx:compile_types.bzl", "CxxSrcCompileCommand")
 load("@prelude//utils:utils.bzl", "flatten")
 
-def _make_entry(ctx: bxl.Context, target: Label, compile_command: CxxSrcCompileCommand) -> dict:
-    args = compile_command.cxx_compile_cmd.base_compile_cmd.copy()
-    args.add(["-I", "."])
-    args.add(compile_command.cxx_compile_cmd.argsfile.cmd_form)
-    args.add(compile_command.args)
-    ctx.output.ensure_multiple(args)
-
-    return {
-        "arguments": args,
-        "directory": ctx.fs.abs_path_unsafe(ctx.root()),
-        "file": compile_command.src,
-    }
-
 def _generate_impl(ctx: bxl.Context):
     targets = ctx.configured_targets(flatten(ctx.cli_args.targets), modifiers = ctx.modifiers)
 
-    actions = ctx.bxl_actions().actions
-
+    abs_prefix = ctx.fs.abs_path_unsafe(ctx.root())
     db = []
+    seen = {}  # Deduplicate by source file
+
     for name, target in ctx.analysis(targets).items():
         comp_db_info = target.providers().get(CxxCompilationDbInfo)
         if comp_db_info:
             for cc in comp_db_info.info.values():
-                db.append(_make_entry(ctx, name, cc))
+                # Get absolute path for source file
+                abs_src = ctx.fs.abs_path_unsafe(cc.src)
 
+                # Skip duplicates (same source may appear in multiple configurations)
+                if abs_src in seen:
+                    continue
+                seen[abs_src] = True
+
+                # Build the command args with absolute_prefix for artifact paths
+                # Note: base_compile_cmd already includes -c and src, so don't add them again
+                args = cmd_args(
+                    cc.cxx_compile_cmd.base_compile_cmd,
+                    cc.cxx_compile_cmd.argsfile.cmd_form,
+                    cc.args,
+                    absolute_prefix = abs_prefix + "/",
+                )
+
+                # Ensure all artifacts in the args are materialized
+                ctx.output.ensure_multiple(args)
+
+                db.append({
+                    "arguments": args,
+                    "directory": abs_prefix,
+                    "file": abs_src,
+                })
+
+    actions = ctx.bxl_actions().actions
     db_file = actions.declare_output("compile_commands.json")
     actions.write_json(db_file.as_output(), db, with_inputs = True, pretty = True)
 
-    # Output the path - caller can use this to create symlink
     output_path = ctx.output.ensure(db_file)
     ctx.output.print(output_path)
 

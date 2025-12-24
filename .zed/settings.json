@@ -9,10 +9,12 @@
   "lsp": {
     "clangd": {
       "binary": {
-        "arguments": [
-          "--compile-commands-dir=.cache/compdb",
-          "--query-driver=**",
-        ],
+        "arguments": ["--query-driver=**"],
+      },
+    },
+    "buck2-lsp": {
+      "binary": {
+        "path": "./tools/buck2-lsp-wrapper.sh",
       },
     },
   },
