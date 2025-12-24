@@ -433,6 +433,18 @@ Regenerate the compilation database:
 buck2 bxl //bxl:compdb.bxl:generate -- //...
 ```
 
+## Zed Extensions
+
+### Sync C++ Queries
+
+Sync Tree-sitter queries from Zed's upstream repository while preserving local `runnables.scm`:
+
+```bash
+.zed/extensions/cpp-runnables/sync-queries.sh
+```
+
+After running, reinstall the dev extension in Zed to apply changes.
+
 ## License
 
 [Add your license here]
