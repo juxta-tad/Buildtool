@@ -4,7 +4,7 @@
 #   load("//nix:flake.bzl", "flake")
 #
 #   flake.package(name = "jq", package = "jq", binary = "jq")
-#   flake.cxx_library(name = "raylib", libs = ["raylib"], frameworks = ["OpenGL", ...])
+#   flake.cxx_library(name = "raylib", libs = ["raylib"], pkg_config = ["raylib"])
 
 load("@prelude//cxx:cxx_context.bzl", "get_cxx_toolchain_info")
 load(
@@ -45,156 +45,6 @@ load(
 load("@prelude//os_lookup:defs.bzl", "Os", "OsLookup")
 load("@prelude//decls/common.bzl", "buck")
 load("@prelude//decls:toolchains_common.bzl", "toolchains_common")
-
-# -----------------------------------------------------------------------------
-# pkg-config .pc file parser (pure Starlark)
-# -----------------------------------------------------------------------------
-
-def _unescape_pc_value(val: str) -> str:
-    """Handle common escape sequences in .pc file values."""
-    # Process escapes by splitting on backslash and handling each segment
-    # First, replace known escape sequences with placeholders, then restore
-    escape_map = [
-        ("\\n", "\n"),
-        ("\\t", "\t"),
-        ("\\\\", "\x00BACKSLASH\x00"),  # Temporary placeholder
-        ("\\$", "$"),
-        ("\\#", "#"),
-    ]
-
-    result = val
-    for escape, replacement in escape_map:
-        result = result.replace(escape, replacement)
-
-    # Restore backslashes from placeholder
-    result = result.replace("\x00BACKSLASH\x00", "\\")
-
-    return result
-
-def _subst_pc_vars(val: str, vars: dict) -> str:
-    """Substitute ${var} references, repeating until stable (max 10 iterations)."""
-    for _ in range(10):
-        new_val = val
-        for k, v in vars.items():
-            new_val = new_val.replace("${" + k + "}", v)
-        if new_val == val:
-            break
-        val = new_val
-    return val
-
-def _join_continued_lines(content: str) -> list[str]:
-    """Join lines ending with backslash (line continuation)."""
-    lines = content.split("\n")
-    result = []
-    current = ""
-
-    for line in lines:
-        # Check for trailing backslash (line continuation)
-        if line.endswith("\\"):
-            current += line[:-1]  # Remove backslash, append content
-        else:
-            current += line
-            result.append(current)
-            current = ""
-
-    # Handle case where file ends with continuation
-    if current:
-        result.append(current)
-
-    return result
-
-def _parse_pc_file(content: str, pc_file_loader = None) -> struct:
-    """Parse a .pc file and extract Cflags and Libs with variable substitution.
-
-    Handles:
-    - Variable substitution (${var})
-    - Escaped characters (\\, \$, \#, \n, \t)
-    - Multi-line continuations (trailing backslash)
-    - Requires/Requires.private directives (returns package names for caller to resolve)
-
-    Filters out -I and -L flags since we provide our own copied paths.
-    Keeps other flags like -D, -l, -framework, etc.
-
-    Args:
-        content: The .pc file content as a string
-        pc_file_loader: Optional function(pkg_name) -> content for loading required .pc files
-
-    Returns:
-        struct with cflags, libs, and requires (list of required package names)
-    """
-    vars = {}
-    cflags = []
-    libs = []
-    requires = []
-
-    lines = _join_continued_lines(content)
-
-    for line in lines:
-        # Strip whitespace
-        line = line.strip()
-
-        # Skip empty lines and comments
-        if not line or line.startswith("#"):
-            continue
-
-        # Variable assignment: name=value (no colon before =)
-        if "=" in line and ":" not in line.split("=")[0]:
-            k, v = line.split("=", 1)
-            k = k.strip()
-            v = v.strip()
-            v = _unescape_pc_value(v)
-            vars[k] = _subst_pc_vars(v, vars)
-
-        # Keyword: field: value
-        elif ":" in line:
-            k, v = line.split(":", 1)
-            k = k.strip()
-            v = v.strip()
-            v = _unescape_pc_value(v)
-            v = _subst_pc_vars(v, vars)
-
-            if k == "Cflags":
-                # Filter out -I flags (we provide our own include paths)
-                cflags.extend([f for f in v.split() if not f.startswith("-I")])
-
-            elif k == "Libs":
-                # Filter out -L flags (we provide our own lib paths), keep -l and others
-                libs.extend([f for f in v.split() if not f.startswith("-L")])
-
-            elif k == "Libs.private":
-                # Private libs needed for static linking
-                libs.extend([f for f in v.split() if not f.startswith("-L")])
-
-            elif k in ("Requires", "Requires.private"):
-                # Parse required packages: "pkg1, pkg2 >= 1.0, pkg3"
-                # Strip version constraints and collect package names
-                for dep in v.split(","):
-                    dep = dep.strip()
-                    if not dep:
-                        continue
-                    # Extract package name (first token before any version operator)
-                    for op in [">=", "<=", "!=", "=", ">", "<"]:
-                        if op in dep:
-                            dep = dep.split(op)[0].strip()
-                            break
-                    if dep and dep not in requires:
-                        requires.append(dep)
-
-    # Recursively load required .pc files if loader provided
-    if pc_file_loader and requires:
-        for req_pkg in requires:
-            req_content = pc_file_loader(req_pkg)
-            if req_content:
-                req_parsed = _parse_pc_file(req_content, pc_file_loader)
-                # Merge flags (avoid duplicates)
-                for flag in req_parsed.cflags:
-                    if flag not in cflags:
-                        cflags.append(flag)
-                for flag in req_parsed.libs:
-                    if flag not in libs:
-                        libs.append(flag)
-
-    return struct(cflags = cflags, libs = libs, requires = requires)
 
 # -----------------------------------------------------------------------------
 # flake.package - Generic nix package rule
@@ -274,7 +124,7 @@ def _flake_cxx_library_impl(ctx: AnalysisContext) -> list[Provider]:
     # Reference lib directory from copied package
     lib_dir = nix_pkg.project(lib_path)
 
-    # Parse pkg-config .pc files using dynamic_output (pure Starlark parsing)
+    # Use real pkg-config via nix-shell to resolve transitive dependencies (including frameworks)
     pkg_config_cflags_file = None
     pkg_config_ldflags_file = None
     if ctx.attrs.pkg_config:
@@ -282,55 +132,33 @@ def _flake_cxx_library_impl(ctx: AnalysisContext) -> list[Provider]:
         pkg_config_ldflags_file = ctx.actions.declare_output("pkg_config_ldflags.txt")
 
         pc_names = ctx.attrs.pkg_config
-        pc_dir = ctx.attrs.pkg_config_dir if ctx.attrs.pkg_config_dir else "lib/pkgconfig"
+        nix_pkg_name = ctx.attrs.nix_pkg_name
 
-        # Reference .pc files from copied dev package
-        pc_files = []
-        for pc_name in pc_names:
-            pc_files.append(nix_dev_pkg.project("{}/{}.pc".format(pc_dir, pc_name)))
+        # Run pkg-config inside nix-shell with package + its buildInputs for transitive deps
+        # Uses mkShell to ensure all transitive dependencies (like glfw for raylib) are in PKG_CONFIG_PATH
+        nix_expr = "with import <nixpkgs> {{}}; mkShell {{ buildInputs = [ {pkg} pkg-config ] ++ {pkg}.buildInputs or []; }}".format(pkg = nix_pkg_name)
 
-        # Use dynamic_output to read and parse .pc files
-        def _make_pkg_config_generator(pc_files_list, pc_names_list, cflags_out, ldflags_out):
-            def _generate_pkg_config_flags(ctx, artifacts, outputs):
-                all_cflags = []
-                all_libs = []
+        # Get cflags (filter -I since we provide our own include paths)
+        cflags_cmd = cmd_args([
+            "sh", "-c",
+            '''nix-shell -E "$1" --run "pkg-config --cflags --static $2" 2>/dev/null | tr ' ' '\n' | grep -v '^-I' | grep -v '^$' > "$3" || true''',
+            "--",
+            nix_expr,
+            " ".join(pc_names),
+            pkg_config_cflags_file.as_output(),
+        ])
+        ctx.actions.run(cflags_cmd, category = "pkg_config", identifier = "{}_cflags".format(ctx.label.name), local_only = True)
 
-                # Build a map of package name -> content for the packages we have
-                pc_contents = {}
-                for i, pc_file in enumerate(pc_files_list):
-                    content = artifacts[pc_file].read_string()
-                    pc_contents[pc_names_list[i]] = content
-
-                # Create a loader function for transitive deps
-                def _load_required_pc(pkg_name):
-                    if pkg_name in pc_contents:
-                        return pc_contents[pkg_name]
-                    return None
-
-                for pc_name in pc_names_list:
-                    content = pc_contents.get(pc_name)
-                    if content:
-                        parsed = _parse_pc_file(content, _load_required_pc)
-                        # Merge flags (avoid duplicates)
-                        for flag in parsed.cflags:
-                            if flag not in all_cflags:
-                                all_cflags.append(flag)
-                        for flag in parsed.libs:
-                            if flag not in all_libs:
-                                all_libs.append(flag)
-
-                # Write one flag per line for safer response file parsing
-                ctx.actions.write(outputs[cflags_out], "\n".join(all_cflags))
-                ctx.actions.write(outputs[ldflags_out], "\n".join(all_libs))
-
-            return _generate_pkg_config_flags
-
-        ctx.actions.dynamic_output(
-            dynamic = pc_files,
-            inputs = [],
-            outputs = [pkg_config_cflags_file.as_output(), pkg_config_ldflags_file.as_output()],
-            f = _make_pkg_config_generator(pc_files, pc_names, pkg_config_cflags_file, pkg_config_ldflags_file),
-        )
+        # Get ldflags (filter -L and -l since we provide our own lib paths and libs)
+        ldflags_cmd = cmd_args([
+            "sh", "-c",
+            '''nix-shell -E "$1" --run "pkg-config --libs --static $2" 2>/dev/null | tr ' ' '\n' | grep -v '^-L' | grep -v '^-l' | grep -v '^$' > "$3" || true''',
+            "--",
+            nix_expr,
+            " ".join(pc_names),
+            pkg_config_ldflags_file.as_output(),
+        ])
+        ctx.actions.run(ldflags_cmd, category = "pkg_config", identifier = "{}_ldflags".format(ctx.label.name), local_only = True)
 
     providers = []
     toolchain = get_cxx_toolchain_info(ctx)
@@ -437,13 +265,13 @@ _flake_cxx_library_rule = rule(
     attrs = {
         "nix_pkg": attrs.dep(providers = [DefaultInfo]),
         "nix_dev_pkg": attrs.option(attrs.dep(providers = [DefaultInfo]), default = None),
+        "nix_pkg_name": attrs.string(),
         "deps": attrs.list(attrs.dep(), default = []),
         "libs": attrs.list(attrs.string(), default = []),
         "shared_libs": attrs.list(attrs.string(), default = []),
         "include_dirs": attrs.list(attrs.string(), default = []),
         "lib_dir": attrs.option(attrs.string(), default = None),
         "pkg_config": attrs.list(attrs.string(), default = []),
-        "pkg_config_dir": attrs.option(attrs.string(), default = None),
         "frameworks": attrs.list(attrs.string(), default = []),
         "framework_dirs": attrs.list(attrs.string(), default = []),
         "labels": attrs.list(attrs.string(), default = []),
@@ -463,7 +291,6 @@ def _flake_cxx_library(
         include_dirs = [],
         lib_dir = None,
         pkg_config = [],
-        pkg_config_dir = None,
         frameworks = [],
         framework_dirs = [],
         visibility = ["PUBLIC"],
@@ -481,9 +308,8 @@ def _flake_cxx_library(
         deps: Buck2 dependencies to merge providers from
         include_dirs: Include paths relative to pkg root (default: ["include"])
         lib_dir: Library path relative to pkg root (default: "lib")
-        pkg_config: List of pkg-config package names to query for extra flags
-        pkg_config_dir: Directory containing .pc files (default: "lib/pkgconfig")
-        frameworks: macOS frameworks to link
+        pkg_config: List of pkg-config package names to auto-resolve flags (including frameworks)
+        frameworks: macOS frameworks to link (manual override, prefer pkg_config)
         framework_dirs: macOS framework search paths (-F)
     """
     if package == None:
@@ -491,35 +317,35 @@ def _flake_cxx_library(
     if libs == None:
         libs = [name]
 
-    nix_pkg_name = name + "__nix"
+    nix_pkg_target = name + "__nix"
     _flake_package(
-        name = nix_pkg_name,
+        name = nix_pkg_target,
         path = path,
         package = package,
     )
 
     nix_dev_pkg_ref = None
     if dev_output:
-        nix_dev_pkg_name = name + "__nix_dev"
+        nix_dev_pkg_target = name + "__nix_dev"
         _flake_package(
-            name = nix_dev_pkg_name,
+            name = nix_dev_pkg_target,
             path = path,
             package = package,
             output = dev_output,
         )
-        nix_dev_pkg_ref = ":{}".format(nix_dev_pkg_name)
+        nix_dev_pkg_ref = ":{}".format(nix_dev_pkg_target)
 
     _flake_cxx_library_rule(
         name = name,
-        nix_pkg = ":{}".format(nix_pkg_name),
+        nix_pkg = ":{}".format(nix_pkg_target),
         nix_dev_pkg = nix_dev_pkg_ref,
+        nix_pkg_name = package,
         deps = deps,
         libs = libs,
         shared_libs = shared_libs,
         include_dirs = include_dirs,
         lib_dir = lib_dir,
         pkg_config = pkg_config,
-        pkg_config_dir = pkg_config_dir,
         frameworks = frameworks,
         framework_dirs = framework_dirs,
         visibility = visibility,
