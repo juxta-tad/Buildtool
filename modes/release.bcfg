@@ -1,0 +1,5 @@
+[cxx]
+cxxflags = -O3 -DNDEBUG
+
+[build]
+execution_platforms = prelude//platforms:default

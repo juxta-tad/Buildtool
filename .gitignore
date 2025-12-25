@@ -2,8 +2,11 @@
 buck-out/
 .buckconfig.local
 
-# Nix
+# Nix / devenv
 .direnv/
+.devenv/
+.devenv.flake.nix
+devenv.lock
 result
 
 # Build artifacts

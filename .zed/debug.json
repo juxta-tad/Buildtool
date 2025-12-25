@@ -4,10 +4,10 @@
     "adapter": "CodeLLDB",
     "request": "launch",
     "build": {
-      "command": "buck2 build //$ZED_RELATIVE_DIR:macos_asan",
+      "command": "buck2 build //$ZED_RELATIVE_DIR --config-file modes/asan.bcfg",
       "cwd": "$ZED_WORKTREE_ROOT",
     },
-    "program": "$ZED_WORKTREE_ROOT/buck-out/v2/gen/root/$ZED_RELATIVE_DIR/macos_asan",
+    "program": "$ZED_WORKTREE_ROOT/buck-out/v2/gen/root/$ZED_RELATIVE_DIR/app",
     "cwd": "$ZED_WORKTREE_ROOT",
   },
 ]

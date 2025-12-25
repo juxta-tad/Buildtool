@@ -26,6 +26,7 @@
 
 [build]
   execution_platforms = prelude//platforms:default
+  default_mode = modes/debug.bcfg
 
 [project]
   ignore = .git

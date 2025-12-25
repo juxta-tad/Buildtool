@@ -10,12 +10,12 @@ system_python_bootstrap_toolchain(
     visibility = ["PUBLIC"],
 )
 
-# System C++ toolchain with ThinLTO
+# System C++ toolchain - flags come from buckconfig [cxx] section
 system_cxx_toolchain(
     name = "cxx",
-    cxx_flags = ["-flto=thin"],
-    c_flags = ["-flto=thin"],
-    link_flags = ["-flto=thin"],
+    cxx_flags = read_config("cxx", "cxxflags", "-flto=thin").split(),
+    c_flags = read_config("cxx", "cflags", "-flto=thin").split(),
+    link_flags = read_config("cxx", "ldflags", "-flto=thin").split(),
     visibility = ["PUBLIC"],
 )
 

@@ -1,8 +1,16 @@
 {
+  "dap": {
+    "CodeLLDB": {
+      "args": [
+        "--liblldb",
+        "/Applications/Xcode.app/Contents/SharedFrameworks/LLDB.framework/Versions/A/LLDB",
+      ],
+    },
+  },
   "max_tabs": 5,
   "load_direnv": "direct",
   "file_types": {
-    "ini": [".buckconfig"],
+    "ini": [".buckconfig", ".bcfg"],
     "Starlark": ["BUCK"],
     "Shell Script": [".envrc"],
   },
@@ -10,11 +18,6 @@
     "clangd": {
       "binary": {
         "arguments": ["--query-driver=**"],
-      },
-    },
-    "buck2-lsp": {
-      "binary": {
-        "path": "./tools/buck2-lsp-wrapper.sh",
       },
     },
   },
@@ -40,7 +43,7 @@
   },
   "hidden_files": [
     "**/.*",
-    "**/*.{nix,bzl,lock,h,bxl}",
-    "**/{bxl,BUCK,buck-out,toolchains,result,nix}",
+    "**/*.{nix,bzl,lock,h,bxl,bcfg,toml,json,md,sh}",
+    "**/{bxl,BUCK,buck-out,toolchains,result,nix,modes,tools,defs.bzl}",
   ],
 }

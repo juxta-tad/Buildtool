@@ -3,6 +3,7 @@ cxx_library(
     srcs = ["core.cpp"],
     header_namespace = "core",
     exported_headers = ["core.hpp"],
+    preferred_linkage = "static",
     visibility = ["PUBLIC"],
 )
 

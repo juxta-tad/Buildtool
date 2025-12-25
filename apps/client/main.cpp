@@ -3,8 +3,8 @@
 #include <cstdio>
 #include <raylib.h>
 
-int main() {
 
+int main() {
   std::printf("Core version: %s\n", core::version());
 
   InitWindow(800, 600, "Rotating Cube");

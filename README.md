@@ -2,20 +2,21 @@
 
 Reproducible, incremental C++ builds using Buck2 and Nix.
 
-**Features:** Reproducible (Nix flakes), Incremental (Buck2), Multi-variant (Release/Debug/ASan), Clangd support, Cross-platform (macOS/Linux).
+**Features:** Reproducible (devenv/Nix), Incremental (Buck2), Multi-variant (Release/Debug/ASan), Clangd support, Cross-platform (macOS/Linux).
 
 ## Prerequisites
 
 1.  **Nix**: [Install](https://nixos.org/download.html). Enable flakes in `~/.config/nix/nix.conf`:
     `experimental-features = nix-command flakes`
-2.  **direnv**: [Install](https://direnv.net/) (Recommended).
+2.  **devenv**: [Install](https://devenv.sh/getting-started/)
+3.  **direnv**: [Install](https://direnv.net/) (Recommended).
 
 ## Quick Start
 
 ```bash
 # 1. Enter Environment
 direnv allow              # Recommended
-# OR: nix develop
+# OR: devenv shell
 
 # 2. Build & Run
 buck2 run //apps/client   # 3D Demo
@@ -40,7 +41,7 @@ Append suffix to target (e.g., `//apps/client:macos_release`).
 *   `libs/`: Shared libraries
 *   `nix/`: Buck2-Nix integration rules
 *   `bxl/`: Build scripts (compdb)
-*   `flake.nix`: Dev environment
+*   `devenv.nix`: Dev environment
 
 ## Dependencies (Nix)
 
@@ -99,7 +100,7 @@ cxx_library(
 ## Environment
 
 **Included**: LLVM 18, Buck2, Watchman, CMake, Ninja, lldb/gdb.
-**Customize**: Edit `packages` list in `flake.nix`.
+**Customize**: Edit `packages` list in `devenv.nix`.
 **Direnv**: Add `eval "$(direnv hook bash)"` to shell config.
 
 ## Commands & Troubleshooting
@@ -112,13 +113,20 @@ buck2 query "deps(//apps/client)" # Inspect deps
 
 *   **"nix not found"**: Source nix daemon.
 *   **"flakes disabled"**: Update `nix.conf`.
-*   **Buck2/Watchman error**: Ensure `nix develop` or `direnv allow` is active.
+*   **Buck2/Watchman error**: Ensure `devenv shell` or `direnv allow` is active.
 
 ## Forking
 
 ```bash
-  git clone https://github.com/juxta-tad/Buildtool Mosxil-play && cd Mosxil-play && \
-  rm -rf .git && git init && \
-  git add . && git commit -m "Initial commit" && \
-  gh repo create Mosxil-play --source=. --push --priva
+git clone <url> new-proj && cd new-proj
+rm -rf .git && git init
+gh repo create new-proj --source=. --push
 ```
+## Cache (speed up builds)
+To let devenv set up the caches for you, add yourself to the trusted-users list in /etc/nix/nix.conf:
+
+     trusted-users = root mypc
+
+   Then restart the nix-daemon:
+
+     $ sudo launchctl kickstart -k system/org.nixos.nix-daemon

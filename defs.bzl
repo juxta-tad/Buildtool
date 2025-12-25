@@ -4,82 +4,31 @@ def app(
     srcs = ["main.cpp"],
     deps = [],
     prefix_header = "pch.h",
-    default = "asan",
     visibility = ["PUBLIC"],
 ):
     """
-    Defines a standard app with macos, macos_asan, and macos_cov variants.
-    Creates an alias using the directory name as the target name.
+    Defines a standard app target with fixed name 'app' for debugger compatibility.
+    Use modes for build variants:
+      buck2 build //apps/client                              # debug (default)
+      buck2 build //apps/client --config-file modes/release.bcfg
+      buck2 build //apps/client --config-file modes/asan.bcfg
+      buck2 build //apps/client --config-file modes/cov.bcfg
     """
-    name = paths.basename(package_name())
+    # Use directory name as the public target name for buck2 run/build
+    dir_name = paths.basename(package_name())
 
-    common = {
-        "srcs": srcs,
-        "deps": deps,
-        "prefix_header": prefix_header,
-        "visibility": visibility,
-    }
-
-    # Release variant (optimized, LTO enabled via toolchain)
+    # Main binary with fixed name 'app' for debugger path consistency
     native.cxx_binary(
-        name = "macos_release",
-        compiler_flags = [
-            "-O3",
-            "-DNDEBUG",
-        ],
-        **common
+        name = "app",
+        srcs = srcs,
+        deps = deps,
+        prefix_header = prefix_header,
+        visibility = visibility,
     )
 
-    # Debug variant (no optimization, full debug info)
-    native.cxx_binary(
-        name = "macos_debug",
-        compiler_flags = [
-            "-O0",
-            "-g",
-            "-fno-lto",
-        ],
-        linker_flags = [
-            "-fno-lto",
-        ],
-        **common
-    )
-
-    # ASan + UBSan variant (no LTO for debuggability)
-    native.cxx_binary(
-        name = "macos_asan",
-        compiler_flags = [
-            "-fsanitize=address,undefined",
-            "-fno-omit-frame-pointer",
-            "-g",
-            "-fno-lto",
-            "-O0",
-            "-ftrivial-auto-var-init=zero",
-        ],
-        linker_flags = [
-            "-fsanitize=address,undefined",
-            "-fno-lto",
-        ],
-        **common
-    )
-
-    # Coverage variant
-    native.cxx_binary(
-        name = "macos_cov",
-        compiler_flags = [
-            "--coverage",
-            "-g",
-            "-fno-lto",
-        ],
-        linker_flags = [
-            "--coverage",
-            "-fno-lto",
-        ],
-        **common
-    )
-
-    # Default alias
+    # Alias using directory name for convenience (buck2 build //apps/client)
     native.alias(
-        name = name,
-        actual = ":macos_" + default,
+        name = dir_name,
+        actual = ":app",
         visibility = visibility,
     )

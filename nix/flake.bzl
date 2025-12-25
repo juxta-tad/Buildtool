@@ -122,7 +122,7 @@ def _flake_cxx_library_impl(ctx: AnalysisContext) -> list[Provider]:
     lib_path = ctx.attrs.lib_dir if ctx.attrs.lib_dir else "lib"
 
     # Reference lib directory from copied package
-    lib_dir = nix_pkg.project(lib_path)
+    lib_dir = nix_pkg.project(lib_path) if ctx.attrs.pkg_config else None
 
     # Use real pkg-config via nix-shell to resolve transitive dependencies (including frameworks)
     pkg_config_cflags_file = None
@@ -149,10 +149,10 @@ def _flake_cxx_library_impl(ctx: AnalysisContext) -> list[Provider]:
         ])
         ctx.actions.run(cflags_cmd, category = "pkg_config", identifier = "{}_cflags".format(ctx.label.name), local_only = True)
 
-        # Get ldflags (filter -L and -l since we provide our own lib paths and libs)
+        # Get ldflags (keep -L for transitive deps, -l, and -framework)
         ldflags_cmd = cmd_args([
             "sh", "-c",
-            '''nix-shell -E "$1" --run "pkg-config --libs --static $2" 2>/dev/null | tr ' ' '\n' | grep -v '^-L' | grep -v '^-l' | grep -v '^$' > "$3" || true''',
+            '''nix-shell -E "$1" --run "pkg-config --libs --static $2" 2>/dev/null | tr ' ' '\n' | grep -v '^$' > "$3" || true''',
             "--",
             nix_expr,
             " ".join(pc_names),
@@ -192,10 +192,8 @@ def _flake_cxx_library_impl(ctx: AnalysisContext) -> list[Provider]:
     )
     providers.append(cxx_merge_cpreprocessors(ctx, [pre], dep_preprocessors))
 
-    # Linker flags
-    link_flags = [cmd_args("-L", lib_dir, delimiter = "")]
-    for lib in ctx.attrs.libs:
-        link_flags.append("-l{}".format(lib))
+    # Linker flags (all from pkg-config: -L, -l, -framework)
+    link_flags = []
 
     if is_macos:
         for fwk_dir in ctx.attrs.framework_dirs:
@@ -256,7 +254,7 @@ def _flake_cxx_library_impl(ctx: AnalysisContext) -> list[Provider]:
     )
     providers.append(linkable_graph)
     providers.append(merge_link_group_lib_info(deps = []))
-    providers.append(DefaultInfo(default_output = lib_dir))
+    providers.append(DefaultInfo(default_output = lib_dir if lib_dir else nix_pkg))
 
     return providers
 
@@ -267,7 +265,6 @@ _flake_cxx_library_rule = rule(
         "nix_dev_pkg": attrs.option(attrs.dep(providers = [DefaultInfo]), default = None),
         "nix_pkg_name": attrs.string(),
         "deps": attrs.list(attrs.dep(), default = []),
-        "libs": attrs.list(attrs.string(), default = []),
         "shared_libs": attrs.list(attrs.string(), default = []),
         "include_dirs": attrs.list(attrs.string(), default = []),
         "lib_dir": attrs.option(attrs.string(), default = None),
@@ -285,12 +282,11 @@ def _flake_cxx_library(
         path = "nixpkgs",
         package = None,
         dev_output = None,
-        libs = None,
         shared_libs = [],
         deps = [],
         include_dirs = [],
         lib_dir = None,
-        pkg_config = [],
+        pkg_config = None,
         frameworks = [],
         framework_dirs = [],
         visibility = ["PUBLIC"],
@@ -298,24 +294,25 @@ def _flake_cxx_library(
     """
     Creates a C++ library from a Nix flake package.
 
+    All library names (-l flags) and frameworks are auto-resolved via pkg-config.
+
     Args:
-        name: Target name (also used as default package and lib name)
+        name: Target name (also used as default package name)
         path: Flake path (default: "nixpkgs")
         package: Nix package name (default: same as name)
         dev_output: Nix output for headers/pkgconfig (e.g., "dev" for split packages)
-        libs: List of library names to link (default: [name])
         shared_libs: List of .dylib/.so filenames for runtime staging
         deps: Buck2 dependencies to merge providers from
         include_dirs: Include paths relative to pkg root (default: ["include"])
         lib_dir: Library path relative to pkg root (default: "lib")
-        pkg_config: List of pkg-config package names to auto-resolve flags (including frameworks)
+        pkg_config: List of pkg-config names to query (default: [package])
         frameworks: macOS frameworks to link (manual override, prefer pkg_config)
         framework_dirs: macOS framework search paths (-F)
     """
     if package == None:
         package = name
-    if libs == None:
-        libs = [name]
+    if pkg_config == None:
+        pkg_config = [package]
 
     nix_pkg_target = name + "__nix"
     _flake_package(
@@ -341,7 +338,6 @@ def _flake_cxx_library(
         nix_dev_pkg = nix_dev_pkg_ref,
         nix_pkg_name = package,
         deps = deps,
-        libs = libs,
         shared_libs = shared_libs,
         include_dirs = include_dirs,
         lib_dir = lib_dir,

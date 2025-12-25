@@ -1,0 +1,3 @@
+[cxx]
+cxxflags = --coverage -g -fno-lto
+ldflags = --coverage -fno-lto

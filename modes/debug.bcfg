@@ -1,0 +1,5 @@
+[cxx]
+cxxflags = -g -O0
+
+[build]
+execution_platforms = prelude//platforms:default

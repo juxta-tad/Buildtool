@@ -20,19 +20,13 @@ Args:
 
 flake.cxx_library(
     name = "raylib",
-    package = "raylib",
-    libs = ["raylib"],
     shared_libs = ["libraylib.dylib"],
-    pkg_config = ["raylib"],
     visibility = ["PUBLIC"],
 )
 
 flake.cxx_library(
     name = "gtest",
-    path = "nixpkgs",
-    package = "gtest",
     dev_output = "dev",
-    libs = ["gtest", "gtest_main"],
     pkg_config = ["gtest", "gtest_main"],
     visibility = ["PUBLIC"],
 )
