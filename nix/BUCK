@@ -1,13 +1,29 @@
 load("//nix:flake.bzl", "flake")
 
+"""
+Creates a C++ library from a Nix flake package.
+
+Args:
+    name: Target name (also used as default package and lib name)
+    path: Flake path (default: "nixpkgs")
+    package: Nix package name (default: same as name)
+    dev_output: Nix output for headers/pkgconfig (e.g., "dev" for split packages)
+    libs: List of library names to link (default: [name])
+    shared_libs: List of .dylib/.so filenames for runtime staging
+    deps: Buck2 dependencies to merge providers from
+    include_dirs: Include paths relative to pkg root (default: ["include"])
+    lib_dir: Library path relative to pkg root (default: "lib")
+    pkg_config: List of pkg-config package names to auto-resolve flags (including frameworks)
+    frameworks: macOS frameworks to link (manual override, prefer pkg_config)
+    framework_dirs: macOS framework search paths (-F)
+"""
+
 flake.cxx_library(
     name = "raylib",
-    path = "nixpkgs",
     package = "raylib",
     libs = ["raylib"],
     shared_libs = ["libraylib.dylib"],
     pkg_config = ["raylib"],
-    frameworks = ["OpenGL", "Cocoa", "IOKit", "CoreVideo", "CoreAudio", "AudioToolbox"],
     visibility = ["PUBLIC"],
 )
 
