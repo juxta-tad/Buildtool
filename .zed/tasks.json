@@ -9,8 +9,8 @@
   },
   {
     "label": "Test",
-    "command": "buck2 test //$ZED_RELATIVE_DIR:$ZED_STEM -- --env GTEST_FILTER='*.$ZED_SYMBOL'",
-    "use_new_terminal": false,
+    "command": "buck2 test //$ZED_RELATIVE_DIR:$ZED_STEM -- --env GTEST_FILTER='$ZED_CUSTOM_SUITE.$ZED_SYMBOL'",
+    "use_new_terminal": true,
     "allow_concurrent_runs": false,
     "reveal": "always",
     "tags": ["cpp-gtest"],
