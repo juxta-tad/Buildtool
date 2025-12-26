@@ -9,7 +9,7 @@
   },
   {
     "label": "Test",
-    "command": "buck2 test //$ZED_RELATIVE_DIR:$ZED_STEM -- --env GTEST_FILTER='$ZED_CUSTOM_SUITE.$ZED_SYMBOL'",
+    "command": "buck2 test //$ZED_RELATIVE_DIR:$ZED_STEM -- --env GTEST_FILTER='$ZED_CUSTOM_GTEST_SUITE.$ZED_CUSTOM_GTEST_NAME'",
     "use_new_terminal": true,
     "allow_concurrent_runs": false,
     "reveal": "always",
